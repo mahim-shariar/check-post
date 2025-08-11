@@ -1,6 +1,6 @@
-import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
+import { useContext } from "react";
+import { AuthContext } from "../context/authContext";
+import { Link } from "react-router-dom";
 
 const Profile = () => {
   const { user, logout } = useContext(AuthContext);
@@ -17,12 +17,10 @@ const Profile = () => {
           <p>Welcome, {user.username}</p>
           <p>User ID: {user.id}</p>
           <p>Role: {user.role}</p>
-          
-          
-            {/* <Link to="/admin" className="admin-link">
+
+          {/* <Link to="/admin" className="admin-link">
               Go to Admin Dashboard
             </Link> */}
-          
         </div>
       )}
       <button onClick={handleLogout}>Logout</button>

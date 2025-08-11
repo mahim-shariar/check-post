@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { AuthContext } from './authContext';
-import { setAuthToken, clearAuthToken } from '../services/api';
+import { useState } from "react";
+import { AuthContext } from "./authContext";
+import { setAuthToken, clearAuthToken } from "../services/api";
 
 export const AuthProvider = ({ children }) => {
   const [authState, setAuthState] = useState({
