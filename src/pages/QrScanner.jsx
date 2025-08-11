@@ -39,7 +39,7 @@ const QrScanner = () => {
             setScanCount((prev) => prev + 1);
             // Optional: play success sound
             if (typeof window !== "undefined") {
-              const audio = new Audio("/success-beep.mp3"); // Add this file to your public folder
+              const audio = new Audio("/success-beep.mp3");
               audio.play().catch((e) => console.log("Audio play error:", e));
             }
           },
@@ -74,9 +74,7 @@ const QrScanner = () => {
   const resetScanner = () => {
     setQrResult("");
     setScanCount(0);
-    if (!isScanning) {
-      startScanner();
-    }
+    startScanner();
   };
 
   useEffect(() => {
@@ -122,6 +120,7 @@ const QrScanner = () => {
               ></div>
             ))}
 
+            {/* Scanning Grid Effect */}
             {isScanning && (
               <>
                 <div className="absolute inset-0 overflow-hidden rounded-lg">
@@ -147,21 +146,14 @@ const QrScanner = () => {
         </div>
 
         {/* Scanning Status Indicator */}
-        <div className="absolute top-4 left-0 right-0 flex justify-center">
-          <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm flex items-center">
-            {isScanning ? (
-              <>
-                <span className="w-2 h-2 mr-2 rounded-full bg-green-500 animate-pulse"></span>
-                Scanning...
-              </>
-            ) : (
-              <>
-                <span className="w-2 h-2 mr-2 rounded-full bg-yellow-500"></span>
-                Scanner paused
-              </>
-            )}
+        {isScanning && (
+          <div className="absolute top-4 left-0 right-0 flex justify-center">
+            <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm flex items-center">
+              <span className="w-2 h-2 mr-2 rounded-full bg-green-500 animate-pulse"></span>
+              Scanning...
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Camera Error */}
         {cameraError && (
@@ -213,7 +205,7 @@ const QrScanner = () => {
               onClick={resetScanner}
               className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm"
             >
-              Scan Again
+              Scan Another
             </button>
             <button
               onClick={() => navigator.clipboard.writeText(qrResult)}
@@ -222,61 +214,6 @@ const QrScanner = () => {
               Copy
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Control Buttons */}
-      {!qrResult && (
-        <div className="p-4 bg-gray-900 bg-opacity-80 flex justify-center space-x-4">
-          {isScanning ? (
-            <button
-              onClick={stopScanner}
-              className="p-3 bg-red-600 hover:bg-red-700 rounded-full text-white shadow-lg"
-              title="Stop Scanner"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
-                />
-              </svg>
-            </button>
-          ) : (
-            <button
-              onClick={startScanner}
-              className="p-3 bg-green-600 hover:bg-green-700 rounded-full text-white shadow-lg"
-              title="Start Scanner"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
-            </button>
-          )}
         </div>
       )}
 
