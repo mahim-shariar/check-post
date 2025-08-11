@@ -13,14 +13,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/qr-scanner"
-            element={
-              <PrivateRoute>
-                <QrScanner />
-              </PrivateRoute>
-            }
-          />
+          <Route path="/qr-scanner" element={<QrScanner />} />
           {/* <Route
             path="/admin"
             element={
