@@ -1,7 +1,7 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext";
 import { login } from "../services/api";
+import { AuthContext } from "../context/AuthContext";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -26,6 +26,7 @@ const Login = () => {
         err.response?.data?.message ||
           "Login failed. Please check your credentials and try again."
       );
+      console.log(err);
     } finally {
       setIsLoading(false);
     }
