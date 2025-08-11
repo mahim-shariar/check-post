@@ -1,18 +1,11 @@
 import React, { useRef, useState } from "react";
 import Webcam from "react-webcam";
-import {
-  FaCamera,
-  FaRedo,
-  FaCheck,
-  FaExclamationTriangle,
-  FaTimes,
-} from "react-icons/fa";
+import { FaCamera, FaRedo, FaCheck, FaTimes } from "react-icons/fa";
 
 const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   const webcamRef = useRef(null);
   const [imgSrc, setImgSrc] = useState(null);
   const [flashEffect, setFlashEffect] = useState(false);
-  const [permissionError, setPermissionError] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState(false);
@@ -52,37 +45,34 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
     }
   };
 
-  const handleError = () => {
-    setPermissionError(true);
-  };
-
-  const handleLoad = () => {
-    setPermissionError(false);
-  };
-
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
+      {/* Flash effect when capturing */}
       {flashEffect && (
         <div className="absolute inset-0 bg-white animate-flash"></div>
       )}
 
+      {/* Bus number display */}
       <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
         <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm">
           Bus: {busNumber}
         </div>
       </div>
 
+      {/* Close button */}
       <button
         onClick={onClose}
         className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 rounded-full text-white"
+        aria-label="Close camera"
       >
         <FaTimes className="text-xl" />
       </button>
 
+      {/* Camera preview or captured image */}
       {imgSrc ? (
         <img
           src={imgSrc}
-          alt="Captured"
+          alt="Captured bus"
           className="w-full h-full object-cover"
         />
       ) : (
@@ -96,29 +86,10 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
             height: { ideal: 1080 },
           }}
           className="w-full h-full object-cover"
-          onUserMediaError={handleError}
-          onUserMedia={handleLoad}
         />
       )}
 
-      {permissionError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center z-20">
-          <div className="bg-red-500 rounded-full p-4 mb-4">
-            <FaExclamationTriangle className="text-2xl" />
-          </div>
-          <h2 className="text-xl font-bold mb-2">Camera Access Required</h2>
-          <p className="mb-4 text-gray-300">
-            Please enable camera permissions in your browser settings
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
-          >
-            Reload & Allow
-          </button>
-        </div>
-      )}
-
+      {/* Upload success message */}
       {uploadSuccess && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center z-20">
           <div className="bg-green-500 rounded-full p-4 mb-4">
@@ -145,6 +116,7 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
         </div>
       )}
 
+      {/* Upload error message */}
       {uploadError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center z-20">
           <div className="bg-red-500 rounded-full p-4 mb-4">
@@ -163,6 +135,7 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
         </div>
       )}
 
+      {/* Camera controls */}
       {!uploadSuccess && !uploadError && (
         <div className="absolute bottom-8 left-0 right-0 flex justify-center z-10">
           {imgSrc ? (
@@ -192,10 +165,7 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
           ) : (
             <button
               onClick={capture}
-              disabled={permissionError}
-              className={`relative h-16 w-16 rounded-full border-4 border-white ${
-                permissionError ? "bg-gray-500" : "bg-red-500 hover:bg-red-600"
-              } shadow-lg transition-all flex items-center justify-center`}
+              className="relative h-16 w-16 rounded-full border-4 border-white bg-red-500 hover:bg-red-600 shadow-lg transition-all flex items-center justify-center"
               aria-label="Take photo"
             >
               <FaCamera className="text-white text-xl" />
@@ -204,6 +174,7 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
         </div>
       )}
 
+      {/* Flash animation style */}
       <style jsx global>{`
         @keyframes flash {
           0% {
