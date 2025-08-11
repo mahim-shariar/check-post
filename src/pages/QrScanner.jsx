@@ -1,13 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 
-const QrScanner = () => {
+const QrScanner = ({ onScan }) => {
   const qrRef = useRef(null);
   const html5QrCodeRef = useRef(null);
-  const [qrResult, setQrResult] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState(null);
-  const [scanCount, setScanCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
 
   const startScanner = async () => {
@@ -35,8 +33,11 @@ const QrScanner = () => {
             qrbox: { width: 250, height: 250 },
           },
           (decodedText) => {
-            setQrResult(decodedText);
-            setScanCount((prev) => prev + 1);
+            // Store the result internally and pass to callback
+            if (onScan) {
+              onScan(decodedText);
+            }
+
             // Optional: play success sound
             if (typeof window !== "undefined") {
               const audio = new Audio("/success-beep.mp3");
@@ -69,12 +70,6 @@ const QrScanner = () => {
         setIsScanning(false);
       }
     }
-  };
-
-  const resetScanner = () => {
-    setQrResult("");
-    setScanCount(0);
-    startScanner();
   };
 
   useEffect(() => {
@@ -185,38 +180,6 @@ const QrScanner = () => {
         )}
       </div>
 
-      {/* Results Panel */}
-      {qrResult && (
-        <div className="bg-gray-800 text-white p-4 border-t border-gray-700 animate-slide-up">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-medium">
-              Scan Result{" "}
-              <span className="text-gray-400 text-sm">#{scanCount}</span>
-            </h3>
-            <div className="text-gray-400 text-sm">
-              {new Date().toLocaleTimeString()}
-            </div>
-          </div>
-          <div className="p-3 bg-gray-700 rounded-md font-mono text-sm break-all mb-3">
-            {qrResult}
-          </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={resetScanner}
-              className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm"
-            >
-              Scan Another
-            </button>
-            <button
-              onClick={() => navigator.clipboard.writeText(qrResult)}
-              className="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-md text-sm"
-            >
-              Copy
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Global Styles */}
       <style jsx global>{`
         @keyframes scanLine {
@@ -234,19 +197,6 @@ const QrScanner = () => {
             transform: translateY(100%);
             opacity: 0;
           }
-        }
-
-        @keyframes slideUp {
-          from {
-            transform: translateY(100%);
-          }
-          to {
-            transform: translateY(0);
-          }
-        }
-
-        .animate-slide-up {
-          animation: slideUp 0.3s ease-out;
         }
 
         body {
