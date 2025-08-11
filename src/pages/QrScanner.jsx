@@ -7,6 +7,7 @@ const QrScanner = ({ onScan }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [decodedResult, setDecodedResult] = useState(null); // New state for storing the decoded result
 
   const startScanner = async () => {
     if (!qrRef.current) {
@@ -14,8 +15,9 @@ const QrScanner = ({ onScan }) => {
       return;
     }
 
-    // Clear previous error
+    // Clear previous error and result
     setCameraError(null);
+    setDecodedResult(null);
 
     try {
       const html5QrCode = new Html5Qrcode(qrRef.current.id);
@@ -33,7 +35,10 @@ const QrScanner = ({ onScan }) => {
             qrbox: { width: 250, height: 250 },
           },
           (decodedText) => {
-            // Store the result internally and pass to callback
+            // Store the result in state
+            setDecodedResult(decodedText);
+
+            // Pass to parent callback if provided
             if (onScan) {
               onScan(decodedText);
             }
@@ -176,6 +181,15 @@ const QrScanner = ({ onScan }) => {
             >
               Retry
             </button>
+          </div>
+        )}
+
+        {/* Display decoded result */}
+        {decodedResult && (
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+            <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm">
+              Scanned: {decodedResult}
+            </div>
           </div>
         )}
       </div>
