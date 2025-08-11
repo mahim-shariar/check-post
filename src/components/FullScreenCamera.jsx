@@ -5,13 +5,17 @@ import {
   FaRedo,
   FaCheck,
   FaExclamationTriangle,
+  FaTimes,
 } from "react-icons/fa";
 
-const FullScreenCamera = () => {
+const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   const webcamRef = useRef(null);
   const [imgSrc, setImgSrc] = useState(null);
   const [flashEffect, setFlashEffect] = useState(false);
   const [permissionError, setPermissionError] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState(false);
 
   const capture = () => {
     if (!webcamRef.current) return;
@@ -26,11 +30,26 @@ const FullScreenCamera = () => {
 
   const retake = () => {
     setImgSrc(null);
+    setUploadSuccess(false);
+    setUploadError(false);
   };
 
-  const savePhoto = () => {
-    // Add your save logic here
-    console.log("Photo saved:", imgSrc);
+  const savePhoto = async () => {
+    if (!imgSrc) return;
+
+    setIsUploading(true);
+    try {
+      const success = await onPhotoTaken(imgSrc);
+      if (success) {
+        setUploadSuccess(true);
+      } else {
+        setUploadError(true);
+      }
+    } catch (error) {
+      setUploadError(true);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleError = () => {
@@ -43,12 +62,23 @@ const FullScreenCamera = () => {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
-      {/* Flash Effect */}
       {flashEffect && (
         <div className="absolute inset-0 bg-white animate-flash"></div>
       )}
 
-      {/* Camera Preview */}
+      <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
+        <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm">
+          Bus: {busNumber}
+        </div>
+      </div>
+
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 rounded-full text-white"
+      >
+        <FaTimes className="text-xl" />
+      </button>
+
       {imgSrc ? (
         <img
           src={imgSrc}
@@ -71,9 +101,8 @@ const FullScreenCamera = () => {
         />
       )}
 
-      {/* Error Message */}
       {permissionError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center z-20">
           <div className="bg-red-500 rounded-full p-4 mb-4">
             <FaExclamationTriangle className="text-2xl" />
           </div>
@@ -90,43 +119,91 @@ const FullScreenCamera = () => {
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="absolute bottom-8 left-0 right-0 flex justify-center">
-        {imgSrc ? (
-          <div className="flex gap-6 bg-black bg-opacity-40 backdrop-blur-sm rounded-full p-3">
-            {/* Retake Button */}
+      {uploadSuccess && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center z-20">
+          <div className="bg-green-500 rounded-full p-4 mb-4">
+            <FaCheck className="text-2xl" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">Verification Complete!</h2>
+          <p className="mb-4 text-gray-300">
+            Bus {busNumber} has been successfully verified.
+          </p>
+          <div className="flex gap-4">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
+            >
+              Done
+            </button>
             <button
               onClick={retake}
-              className="flex items-center justify-center bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-4 transition-all"
-              aria-label="Retake photo"
+              className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-full transition-colors"
             >
-              <FaRedo className="text-black text-xl" />
-            </button>
-
-            {/* Save/Confirm Button */}
-            <button
-              onClick={savePhoto}
-              className="flex items-center justify-center bg-green-500 hover:bg-green-600 rounded-full p-4 transition-all"
-              aria-label="Save photo"
-            >
-              <FaCheck className="text-white text-xl" />
+              Take Another
             </button>
           </div>
-        ) : (
-          <button
-            onClick={capture}
-            disabled={permissionError}
-            className={`relative h-16 w-16 rounded-full border-4 border-white ${
-              permissionError ? "bg-gray-500" : "bg-red-500 hover:bg-red-600"
-            } shadow-lg transition-all flex items-center justify-center`}
-            aria-label="Take photo"
-          >
-            <FaCamera className="text-white text-xl" />
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Flash animation style */}
+      {uploadError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center z-20">
+          <div className="bg-red-500 rounded-full p-4 mb-4">
+            <FaExclamationTriangle className="text-2xl" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">Upload Failed</h2>
+          <p className="mb-4 text-gray-300">
+            Could not verify bus. Please try again.
+          </p>
+          <button
+            onClick={retake}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!uploadSuccess && !uploadError && (
+        <div className="absolute bottom-8 left-0 right-0 flex justify-center z-10">
+          {imgSrc ? (
+            <div className="flex gap-6 bg-black bg-opacity-40 backdrop-blur-sm rounded-full p-3">
+              <button
+                onClick={retake}
+                className="flex items-center justify-center bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-4 transition-all"
+                aria-label="Retake photo"
+                disabled={isUploading}
+              >
+                <FaRedo className="text-black text-xl" />
+              </button>
+
+              <button
+                onClick={savePhoto}
+                className="flex items-center justify-center bg-green-500 hover:bg-green-600 rounded-full p-4 transition-all"
+                aria-label="Save photo"
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  <FaCheck className="text-white text-xl" />
+                )}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={capture}
+              disabled={permissionError}
+              className={`relative h-16 w-16 rounded-full border-4 border-white ${
+                permissionError ? "bg-gray-500" : "bg-red-500 hover:bg-red-600"
+              } shadow-lg transition-all flex items-center justify-center`}
+              aria-label="Take photo"
+            >
+              <FaCamera className="text-white text-xl" />
+            </button>
+          )}
+        </div>
+      )}
+
       <style jsx global>{`
         @keyframes flash {
           0% {
