@@ -1,23 +1,20 @@
-import React, { useRef, useState } from "react";
-import Webcam from "react-webcam";
+import React, { useState, useRef } from "react";
+import { Camera } from "react-html5-camera-photo";
+import "react-html5-camera-photo/build/css/index.css";
 import { FaCamera, FaRedo, FaCheck, FaTimes, FaSyncAlt } from "react-icons/fa";
 
 const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
-  const webcamRef = useRef(null);
   const [imgSrc, setImgSrc] = useState(null);
   const [flashEffect, setFlashEffect] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState(false);
-  const [facingMode, setFacingMode] = useState("environment"); // 'environment' for back, 'user' for front
+  const [facingMode, setFacingMode] = useState("environment"); // 'environment' or 'user'
 
-  const capture = () => {
-    if (!webcamRef.current) return;
-
+  const handleTakePhoto = (dataUri) => {
     setFlashEffect(true);
     setTimeout(() => {
-      const imageSrc = webcamRef.current.getScreenshot();
-      setImgSrc(imageSrc);
+      setImgSrc(dataUri);
       setFlashEffect(false);
     }, 200);
   };
@@ -51,13 +48,6 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
     } finally {
       setIsUploading(false);
     }
-  };
-
-  // Video constraints for the camera
-  const videoConstraints = {
-    facingMode: facingMode,
-    width: { ideal: 1920 },
-    height: { ideal: 1080 },
   };
 
   return (
@@ -105,13 +95,13 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
           className="w-full h-full object-cover"
         />
       ) : (
-        <Webcam
-          ref={webcamRef}
-          audio={false}
-          screenshotFormat="image/jpeg"
-          videoConstraints={videoConstraints}
+        <Camera
+          onTakePhoto={handleTakePhoto}
+          idealFacingMode={facingMode}
+          isFullscreen={true}
+          isImageMirror={false}
+          sizeFactor={1}
           className="w-full h-full object-cover"
-          forceScreenshotSourceSize={true}
         />
       )}
 
@@ -184,7 +174,7 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
             </div>
           ) : (
             <button
-              onClick={capture}
+              onClick={() => {}}
               className="relative h-16 w-16 rounded-full border-4 border-white bg-red-500 hover:bg-red-600 shadow-lg transition-all flex items-center justify-center"
               aria-label="Take photo"
             >
@@ -210,6 +200,17 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
         body {
           overflow: hidden;
           touch-action: none;
+        }
+        /* Override react-html5-camera-photo styles */
+        .react-html5-camera-photo > video {
+          object-fit: cover !important;
+        }
+        .react-html5-camera-photo {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
         }
       `}</style>
     </div>
