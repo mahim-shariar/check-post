@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import FullScreenCamera from "../components/FullScreenCamera";
+import FullScreenCamera from "./FullScreenCamera";
 
 const QrScanner = () => {
   const qrRef = useRef(null);
@@ -11,7 +11,6 @@ const QrScanner = () => {
   const [showCamera, setShowCamera] = useState(false);
   const [busNumber, setBusNumber] = useState(null);
   const [scanSuccess, setScanSuccess] = useState(false);
-  const soundPlayedRef = useRef(false);
 
   const busNumberPattern = /^\d{2}-\d{2}-\d{3}$/;
 
@@ -23,7 +22,6 @@ const QrScanner = () => {
 
     setCameraError(null);
     setScanSuccess(false);
-    soundPlayedRef.current = false;
 
     try {
       const html5QrCode = new Html5Qrcode(qrRef.current.id);
@@ -38,21 +36,22 @@ const QrScanner = () => {
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 250, height: 150 },
+            qrbox: { width: 250, height: 250 },
           },
           (decodedText) => {
             if (busNumberPattern.test(decodedText)) {
               setBusNumber(decodedText);
               setScanSuccess(true);
 
-              if (!soundPlayedRef.current && typeof window !== "undefined") {
-                soundPlayedRef.current = true;
+              setTimeout(() => {
+                stopScanner();
+                setShowCamera(true);
+              }, 1000);
+
+              if (typeof window !== "undefined") {
                 const audio = new Audio("/success-beep.mp3");
                 audio.play().catch((e) => console.log("Audio play error:", e));
               }
-
-              stopScanner();
-              setShowCamera(true);
             }
           },
           (errorMessage) => {}
@@ -83,6 +82,7 @@ const QrScanner = () => {
 
   const handlePhotoTaken = async (photoData) => {
     try {
+      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500));
       return true;
     } catch (error) {
@@ -115,70 +115,70 @@ const QrScanner = () => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black flex flex-col">
-      <div
-        ref={qrRef}
-        id="qr-reader"
-        className={`w-full min-h-full bg-black ${
-          isInitialized ? "opacity-100" : "opacity-0"
-        }`}
-      ></div>
+    <div className="fixed inset-0 bg-gray-900 flex flex-col">
+      <div className="relative flex-1">
+        <div
+          ref={qrRef}
+          id="qr-reader"
+          className={`w-full h-full bg-black transition-opacity duration-500 ${
+            isInitialized ? "opacity-100" : "opacity-0"
+          }`}
+        ></div>
 
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-        <div className="relative w-64 h-64 sm:w-80 sm:h-80">
-          <div className="absolute inset-0 border-2 border-blue-400 rounded-lg opacity-80"></div>
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          <div className="relative w-64 h-64 sm:w-80 sm:h-80">
+            <div className="absolute inset-0 border-2 border-blue-400 rounded-lg opacity-80"></div>
 
-          {[0, 90, 180, 270].map((rotation, i) => (
-            <div
-              key={i}
-              className="absolute w-12 h-12 border-t-4 border-r-4 border-blue-500"
-              style={{
-                top: i < 2 ? "0" : "auto",
-                bottom: i >= 2 ? "0" : "auto",
-                left: i === 0 || i === 3 ? "0" : "auto",
-                right: i === 1 || i === 2 ? "0" : "auto",
-                transform: `rotate(${rotation}deg)`,
-                opacity: isScanning ? 1 : 0.5,
-                transition: "opacity 0.3s ease",
-              }}
-            ></div>
-          ))}
+            {[0, 90, 180, 270].map((rotation, i) => (
+              <div
+                key={i}
+                className="absolute w-12 h-12 border-t-4 border-r-4 border-blue-500"
+                style={{
+                  top: i < 2 ? "0" : "auto",
+                  bottom: i >= 2 ? "0" : "auto",
+                  left: i === 0 || i === 3 ? "0" : "auto",
+                  right: i === 1 || i === 2 ? "0" : "auto",
+                  transform: `rotate(${rotation}deg)`,
+                  opacity: isScanning ? 1 : 0.5,
+                  transition: "opacity 0.3s ease",
+                }}
+              ></div>
+            ))}
 
-          {isScanning && (
-            <>
-              <div className="absolute inset-0 overflow-hidden rounded-lg">
-                {Array.from({ length: 20 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute top-0 left-0 right-0 h-px bg-blue-400 opacity-20"
-                    style={{
-                      top: `${(i * 100) / 20}%`,
-                      animation: `scanLine 2s ${i * 0.1}s infinite linear`,
-                    }}
-                  ></div>
-                ))}
-              </div>
+            {isScanning && (
+              <>
+                <div className="absolute inset-0 overflow-hidden rounded-lg">
+                  {Array.from({ length: 20 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute top-0 left-0 right-0 h-px bg-blue-400 opacity-20"
+                      style={{
+                        top: `${(i * 100) / 20}%`,
+                        animation: `scanLine 2s ${i * 0.1}s infinite linear`,
+                      }}
+                    ></div>
+                  ))}
+                </div>
 
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping opacity-75"></div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {isScanning && (
-        <div className="absolute top-4 left-0 right-0 flex justify-center">
-          <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm flex items-center">
-            <span className="w-2 h-2 mr-2 rounded-full bg-green-500 animate-pulse"></span>
-            Scanning...
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+                </div>
+              </>
+            )}
           </div>
         </div>
-      )}
 
-      {cameraError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80">
-          <div className="text-white p-6 rounded-lg max-w-xs text-center">
+        {isScanning && (
+          <div className="absolute top-4 left-0 right-0 flex justify-center">
+            <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm flex items-center">
+              <span className="w-2 h-2 mr-2 rounded-full bg-green-500 animate-pulse"></span>
+              Scanning...
+            </div>
+          </div>
+        )}
+
+        {cameraError && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 text-white p-6 rounded-lg max-w-xs text-center">
             <div className="text-red-400 mb-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -203,8 +203,31 @@ const QrScanner = () => {
               Retry
             </button>
           </div>
-        </div>
-      )}
+        )}
+
+        {scanSuccess && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 text-white p-6 rounded-lg max-w-xs text-center">
+            <div className="text-green-400 mb-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-10 w-10 mx-auto"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <p className="mb-4">Bus number verified: {busNumber}</p>
+            <p>Opening camera...</p>
+          </div>
+        )}
+      </div>
 
       <style jsx global>{`
         @keyframes scanLine {
