@@ -173,13 +173,7 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => {}}
-              className="relative h-16 w-16 rounded-full border-4 border-white bg-red-500 hover:bg-red-600 shadow-lg transition-all flex items-center justify-center"
-              aria-label="Take photo"
-            >
-              <FaCamera className="text-white text-xl" />
-            </button>
+            <div></div>
           )}
         </div>
       )}
