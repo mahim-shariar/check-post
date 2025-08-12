@@ -138,9 +138,11 @@ const QrScanner = () => {
               ></div>
             ))}
 
-            {/* Scanning animation */}
+            {/* Scanning animation - now positioned relative to the container */}
             {isScanning && (
-              <div className="absolute top-0 left-0 right-0 h-1 bg-blue-400/50 rounded-full animate-scan"></div>
+              <div className="absolute top-0 left-0 right-0 h-full overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-blue-400/50 rounded-full animate-scan"></div>
+              </div>
             )}
           </div>
         </div>
@@ -254,7 +256,7 @@ const QrScanner = () => {
             transform: translateY(-100%);
           }
           100% {
-            transform: translateY(400%);
+            transform: translateY(640px);
           }
         }
 
