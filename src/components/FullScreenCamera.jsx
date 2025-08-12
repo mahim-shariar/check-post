@@ -13,6 +13,7 @@ const FullScreenCamera = () => {
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [busNumber, setBusNumber] = useState("");
+  const [stream, setStream] = useState(null); // Added to track the camera stream
 
   // Get scanned bus number from localStorage
   useEffect(() => {
@@ -20,41 +21,53 @@ const FullScreenCamera = () => {
     if (scannedBus) {
       setBusNumber(scannedBus);
     } else {
-      // If no bus number found, redirect back to scanner
-      // navigate("/qr-scanner");
+      navigate("/qr-scanner");
     }
   }, [navigate]);
 
-  // Check camera permissions
+  // Initialize camera when permission is granted
   useEffect(() => {
-    const checkPermissions = async () => {
+    if (!hasCameraPermission) return;
+
+    const startCamera = async () => {
       try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const hasPermissions = devices.some(
-          (device) => device.kind === "videoinput" && device.label
-        );
-        setHasCameraPermission(hasPermissions);
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment",
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+        });
+
+        if (webcamRef.current) {
+          webcamRef.current.srcObject = mediaStream;
+          setStream(mediaStream);
+        }
       } catch (err) {
-        console.error("Error checking permissions:", err);
-        setCameraError("Could not access camera");
+        console.error("Camera initialization error:", err);
+        setCameraError(err.message || "Failed to start camera");
+        setHasCameraPermission(false);
       }
     };
 
-    checkPermissions();
-  }, []);
+    startCamera();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [hasCameraPermission]);
 
   const requestCameraAccess = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
       });
-      stream.getTracks().forEach((track) => track.stop());
       setHasCameraPermission(true);
       setCameraError(null);
+      // Immediately stop the test stream
+      mediaStream.getTracks().forEach((track) => track.stop());
     } catch (err) {
       console.error("Camera permission error:", err);
       setCameraError(err.message || "Camera access denied");
@@ -67,8 +80,18 @@ const FullScreenCamera = () => {
 
     setFlashEffect(true);
     setTimeout(() => {
-      const imageSrc = webcamRef.current.getScreenshot();
-      setImgSrc(imageSrc);
+      const video = webcamRef.current;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+
+      // Flip the image back to normal (undoing the mirror effect)
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      setImgSrc(canvas.toDataURL("image/jpeg"));
       setFlashEffect(false);
     }, 200);
   };
@@ -122,6 +145,10 @@ const FullScreenCamera = () => {
   };
 
   const handleClose = () => {
+    // Clean up camera stream
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
     localStorage.removeItem("scannedBusNumber");
     localStorage.removeItem("scanTimestamp");
     navigate("/");
@@ -159,46 +186,41 @@ const FullScreenCamera = () => {
         />
       ) : (
         <>
-          {!hasCameraPermission && !cameraError && (
+          {!hasCameraPermission && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white p-4 text-center z-20">
-              <div className="bg-blue-500 rounded-full p-4 mb-4">
-                <FaVideo className="text-2xl" />
-              </div>
-              <h2 className="text-xl font-bold mb-2">Camera Access Required</h2>
-              <p className="mb-4 text-gray-300 max-w-md">
-                To verify bus {busNumber}, please allow camera access
-              </p>
-              <button
-                onClick={requestCameraAccess}
-                className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-full transition-colors"
+              <div
+                className={`rounded-full p-4 mb-4 ${
+                  cameraError ? "bg-red-500" : "bg-blue-500"
+                }`}
               >
-                Allow Camera
-              </button>
-            </div>
-          )}
-
-          {cameraError && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white p-4 text-center z-20">
-              <div className="bg-red-500 rounded-full p-4 mb-4">
-                <FaTimes className="text-2xl" />
+                {cameraError ? (
+                  <FaTimes className="text-2xl" />
+                ) : (
+                  <FaVideo className="text-2xl" />
+                )}
               </div>
-              <h2 className="text-xl font-bold mb-2">Camera Blocked</h2>
+              <h2 className="text-xl font-bold mb-2">
+                {cameraError ? "Camera Blocked" : "Camera Access Required"}
+              </h2>
               <p className="mb-4 text-gray-300 max-w-md">
-                {cameraError}. Please try again.
+                {cameraError ||
+                  `To verify bus ${busNumber}, please allow camera access`}
               </p>
               <div className="flex gap-4">
                 <button
                   onClick={requestCameraAccess}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
                 >
-                  Try Again
+                  {cameraError ? "Try Again" : "Allow Camera"}
                 </button>
-                <button
-                  onClick={handleClose}
-                  className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-full transition-colors"
-                >
-                  Cancel
-                </button>
+                {cameraError && (
+                  <button
+                    onClick={handleClose}
+                    className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-full transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -210,6 +232,7 @@ const FullScreenCamera = () => {
               playsInline
               muted
               className="w-full h-full object-cover"
+              style={{ transform: "scaleX(-1)" }} // Mirror the video
             />
           )}
         </>
@@ -301,9 +324,6 @@ const FullScreenCamera = () => {
         }
         .animate-flash {
           animation: flash 0.3s ease-out;
-        }
-        video {
-          transform: scaleX(-1); /* Mirror the video */
         }
       `}</style>
     </div>
