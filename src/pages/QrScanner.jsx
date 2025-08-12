@@ -11,7 +11,7 @@ const QrScanner = () => {
   const [showCamera, setShowCamera] = useState(false);
   const [busNumber, setBusNumber] = useState(null);
   const [scanSuccess, setScanSuccess] = useState(false);
-  const hasScannedRef = useRef(false);
+  const hasScannedRef = useRef(false); // Track if we've already scanned
 
   const busNumberPattern = /^\d{2}-\d{2}-\d{3}$/;
 
@@ -23,7 +23,7 @@ const QrScanner = () => {
 
     setCameraError(null);
     setScanSuccess(false);
-    hasScannedRef.current = false;
+    hasScannedRef.current = false; // Reset scan flag when starting
 
     try {
       const html5QrCode = new Html5Qrcode(qrRef.current.id);
@@ -42,11 +42,11 @@ const QrScanner = () => {
           },
           (decodedText) => {
             if (busNumberPattern.test(decodedText) && !hasScannedRef.current) {
-              hasScannedRef.current = true;
+              hasScannedRef.current = true; // Mark as scanned
               setBusNumber(decodedText);
               setScanSuccess(true);
 
-              // Play success sound
+              // Play sound only once
               if (typeof window !== "undefined") {
                 const audio = new Audio("/success-beep.mp3");
                 audio.play().catch((e) => console.log("Audio play error:", e));
@@ -84,6 +84,17 @@ const QrScanner = () => {
     }
   };
 
+  const handlePhotoTaken = async (photoData) => {
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return true;
+    } catch (error) {
+      console.error("Upload error:", error);
+      return false;
+    }
+  };
+
   const handleCloseCamera = () => {
     setShowCamera(false);
     startScanner();
@@ -99,29 +110,29 @@ const QrScanner = () => {
 
   if (showCamera) {
     return (
-      <FullScreenCamera onClose={handleCloseCamera} busNumber={busNumber} />
+      <FullScreenCamera
+        onPhotoTaken={handlePhotoTaken}
+        onClose={handleCloseCamera}
+        busNumber={busNumber}
+      />
     );
   }
 
   return (
     <div className="fixed inset-0 bg-gray-900 flex flex-col">
       <div className="relative flex-1">
-        {/* Scanner View */}
         <div
           ref={qrRef}
           id="qr-reader"
-          className={`w-full h-full bg-black transition-opacity duration-300 ${
+          className={`w-full h-full bg-black transition-opacity duration-500 ${
             isInitialized ? "opacity-100" : "opacity-0"
           }`}
-        />
+        ></div>
 
-        {/* Scanner Overlay */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
           <div className="relative w-64 h-64 sm:w-80 sm:h-80">
-            {/* Frame Border */}
-            <div className="absolute inset-0 border-2 border-blue-400 rounded-lg opacity-80" />
+            <div className="absolute inset-0 border-2 border-blue-400 rounded-lg opacity-80"></div>
 
-            {/* Corner Indicators */}
             {[0, 90, 180, 270].map((rotation, i) => (
               <div
                 key={i}
@@ -135,10 +146,9 @@ const QrScanner = () => {
                   opacity: isScanning ? 1 : 0.5,
                   transition: "opacity 0.3s ease",
                 }}
-              />
+              ></div>
             ))}
 
-            {/* Scanning Animation */}
             {isScanning && (
               <>
                 <div className="absolute inset-0 overflow-hidden rounded-lg">
@@ -150,88 +160,75 @@ const QrScanner = () => {
                         top: `${(i * 100) / 20}%`,
                         animation: `scanLine 2s ${i * 0.1}s infinite linear`,
                       }}
-                    />
+                    ></div>
                   ))}
                 </div>
 
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping opacity-75" />
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping opacity-75"></div>
                 </div>
               </>
             )}
           </div>
         </div>
 
-        {/* Status Indicators */}
         {isScanning && (
           <div className="absolute top-4 left-0 right-0 flex justify-center">
             <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm flex items-center">
-              <span className="w-2 h-2 mr-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="w-2 h-2 mr-2 rounded-full bg-green-500 animate-pulse"></span>
               Scanning...
             </div>
           </div>
         )}
 
-        {/* Error State */}
         {cameraError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6">
-            <div className="max-w-md text-center">
-              <div className="text-red-400 mb-4">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-12 w-12 mx-auto"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-medium text-white mb-2">
-                Camera Error
-              </h3>
-              <p className="text-gray-300 mb-6">{cameraError}</p>
-              <button
-                onClick={startScanner}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-white"
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 text-white p-6 rounded-lg max-w-xs text-center">
+            <div className="text-red-400 mb-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-10 w-10 mx-auto"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
               >
-                Retry
-              </button>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
             </div>
+            <p className="mb-4">{cameraError}</p>
+            <button
+              onClick={startScanner}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm"
+            >
+              Retry
+            </button>
           </div>
         )}
 
-        {/* Success State */}
         {scanSuccess && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6">
-            <div className="max-w-md text-center animate-fade-in">
-              <div className="text-green-400 mb-4">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-12 w-12 mx-auto"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-medium text-white mb-2">
-                Scan Successful
-              </h3>
-              <p className="text-2xl font-bold text-white mb-2">{busNumber}</p>
-              <p className="text-blue-300 animate-pulse">Opening camera...</p>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 text-white p-6 rounded-lg max-w-xs text-center">
+            <div className="text-green-400 mb-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-10 w-10 mx-auto"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
             </div>
+            <p className="mb-4">Bus number verified: {busNumber}</p>
+            <p>Opening camera...</p>
           </div>
         )}
       </div>
@@ -252,19 +249,6 @@ const QrScanner = () => {
             transform: translateY(100%);
             opacity: 0;
           }
-        }
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-out forwards;
         }
         body {
           overflow: hidden;
