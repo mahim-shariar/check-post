@@ -11,36 +11,44 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   const [uploadError, setUploadError] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [cameraError, setCameraError] = useState(null);
+  const [showPermissionRequest, setShowPermissionRequest] = useState(false);
 
-  // Check and request camera permissions
+  // Initial check for existing permissions
   useEffect(() => {
-    const checkCameraPermissions = async () => {
+    const checkExistingPermissions = async () => {
       try {
-        // Check if we already have permission
         const devices = await navigator.mediaDevices.enumerateDevices();
         const hasPermissions = devices.some(
           (device) => device.kind === "videoinput" && device.label
         );
 
-        if (!hasPermissions) {
-          // Request permission by trying to access the camera
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-          });
-          stream.getTracks().forEach((track) => track.stop());
+        if (hasPermissions) {
+          setHasCameraPermission(true);
+        } else {
+          setShowPermissionRequest(true);
         }
-
-        setHasCameraPermission(true);
-        setCameraError(null);
       } catch (err) {
-        console.error("Camera permission error:", err);
-        setCameraError(err);
-        setHasCameraPermission(false);
+        console.error("Error checking permissions:", err);
+        setShowPermissionRequest(true);
       }
     };
 
-    checkCameraPermissions();
+    checkExistingPermissions();
   }, []);
+
+  const requestCameraAccess = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach((track) => track.stop());
+      setHasCameraPermission(true);
+      setCameraError(null);
+      setShowPermissionRequest(false);
+    } catch (err) {
+      console.error("Camera permission error:", err);
+      setCameraError(err);
+      setHasCameraPermission(false);
+    }
+  };
 
   const capture = () => {
     if (!webcamRef.current) return;
@@ -78,7 +86,6 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
     }
   };
 
-  // Video constraints for the camera
   const videoConstraints = {
     facingMode: "environment",
     width: { ideal: 1920 },
@@ -117,15 +124,33 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
         />
       ) : (
         <>
-          {cameraError ? (
+          {showPermissionRequest ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white p-4 text-center z-20">
+              <div className="bg-blue-500 rounded-full p-4 mb-4">
+                <FaCamera className="text-2xl" />
+              </div>
+              <h2 className="text-xl font-bold mb-2">
+                Camera Permission Needed
+              </h2>
+              <p className="mb-4 text-gray-300 max-w-md">
+                To verify the bus, we need access to your camera.
+              </p>
+              <button
+                onClick={requestCameraAccess}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-full transition-colors"
+              >
+                Allow Camera Access
+              </button>
+            </div>
+          ) : cameraError ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white p-4 text-center z-20">
               <div className="bg-red-500 rounded-full p-4 mb-4">
                 <FaTimes className="text-2xl" />
               </div>
-              <h2 className="text-xl font-bold mb-2">Camera Access Required</h2>
+              <h2 className="text-xl font-bold mb-2">Camera Access Denied</h2>
               <p className="mb-4 text-gray-300 max-w-md">
-                Please allow camera permissions to verify the bus. Refresh the
-                page and try again.
+                Please enable camera permissions in your browser settings and
+                refresh the page.
               </p>
               <button
                 onClick={() => window.location.reload()}
@@ -142,7 +167,6 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
               videoConstraints={videoConstraints}
               className="w-full h-full object-cover"
               forceScreenshotSourceSize={true}
-              onUserMedia={() => setHasCameraPermission(true)}
               onUserMediaError={(err) => {
                 console.error("Webcam error:", err);
                 setCameraError(err);
@@ -151,7 +175,7 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-black text-white">
-              <p>Requesting camera access...</p>
+              <p>Loading camera...</p>
             </div>
           )}
         </>
