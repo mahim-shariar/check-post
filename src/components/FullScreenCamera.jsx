@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import Webcam from "react-webcam";
-import { FaCamera, FaRedo, FaCheck, FaTimes } from "react-icons/fa";
+import { FaCamera, FaRedo, FaCheck, FaTimes, FaSyncAlt } from "react-icons/fa";
 
 const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   const webcamRef = useRef(null);
@@ -9,6 +9,7 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState(false);
+  const [facingMode, setFacingMode] = useState("environment"); // 'environment' for back, 'user' for front
 
   const capture = () => {
     if (!webcamRef.current) return;
@@ -25,6 +26,12 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
     setImgSrc(null);
     setUploadSuccess(false);
     setUploadError(false);
+  };
+
+  const toggleCamera = () => {
+    setFacingMode((prevMode) =>
+      prevMode === "environment" ? "user" : "environment"
+    );
   };
 
   const savePhoto = async () => {
@@ -48,13 +55,16 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
 
   // Video constraints for the camera
   const videoConstraints = {
-    facingMode: "environment",
+    facingMode: facingMode,
     width: { ideal: 1920 },
     height: { ideal: 1080 },
   };
 
   return (
-    <div className="relative w-full h-screen bg-black overflow-hidden">
+    <div
+      className="fixed inset-0 w-full h-full bg-black overflow-hidden"
+      style={{ touchAction: "none" }}
+    >
       {/* Flash effect when capturing */}
       {flashEffect && (
         <div className="absolute inset-0 bg-white animate-flash"></div>
@@ -75,6 +85,17 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
       >
         <FaTimes className="text-xl" />
       </button>
+
+      {/* Camera switch button - only visible when not viewing captured image */}
+      {!imgSrc && (
+        <button
+          onClick={toggleCamera}
+          className="absolute top-4 left-4 z-10 p-2 bg-black bg-opacity-50 rounded-full text-white"
+          aria-label="Switch camera"
+        >
+          <FaSyncAlt className="text-xl" />
+        </button>
+      )}
 
       {/* Camera preview or captured image */}
       {imgSrc ? (
@@ -185,6 +206,10 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
         }
         .animate-flash {
           animation: flash 0.3s ease-out;
+        }
+        body {
+          overflow: hidden;
+          touch-action: none;
         }
       `}</style>
     </div>
