@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { useNavigate } from "react-router-dom";
+import FullScreenCamera from "../components/FullScreenCamera";
 
 const QrScanner = () => {
   const qrRef = useRef(null);
   const html5QrCodeRef = useRef(null);
-  const navigate = useNavigate();
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [busNumber, setBusNumber] = useState(null);
   const [scanSuccess, setScanSuccess] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
-  const hasScannedRef = useRef(false);
+  const hasScannedRef = useRef(false); // Track if we've already scanned
 
   const busNumberPattern = /^\d{2}-\d{2}-\d{3}$/;
 
@@ -23,7 +23,7 @@ const QrScanner = () => {
 
     setCameraError(null);
     setScanSuccess(false);
-    hasScannedRef.current = false;
+    hasScannedRef.current = false; // Reset scan flag when starting
 
     try {
       const html5QrCode = new Html5Qrcode(qrRef.current.id);
@@ -38,33 +38,24 @@ const QrScanner = () => {
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 },
+            qrbox: { width: 250, height: 100 },
           },
           (decodedText) => {
-            if (busNumberPattern.test(decodedText)) {
-              if (!hasScannedRef.current) {
-                hasScannedRef.current = true;
-                setScanSuccess(true);
+            if (busNumberPattern.test(decodedText) && !hasScannedRef.current) {
+              hasScannedRef.current = true; // Mark as scanned
+              setBusNumber(decodedText);
+              setScanSuccess(true);
 
-                // Save to localStorage
-                localStorage.setItem("scannedBusNumber", decodedText);
-                localStorage.setItem("scanTimestamp", new Date().toISOString());
-
-                // Play success sound
+              // Play sound only once
+              if (typeof window !== "undefined") {
                 const audio = new Audio("/success-beep.mp3");
                 audio.play().catch((e) => console.log("Audio play error:", e));
-
-                // Show success for 1.5 seconds before redirecting
-                setTimeout(() => {
-                  setIsRedirecting(true);
-                  stopScanner().then(() => {
-                    // Small delay to show the redirecting state
-                    setTimeout(() => {
-                      navigate("/camera");
-                    }, 500);
-                  });
-                }, 1500);
               }
+
+              // Stop scanner and open camera
+              stopScanner().then(() => {
+                setShowCamera(true);
+              });
             }
           },
           (errorMessage) => {}
@@ -93,6 +84,22 @@ const QrScanner = () => {
     }
   };
 
+  const handlePhotoTaken = async (photoData) => {
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return true;
+    } catch (error) {
+      console.error("Upload error:", error);
+      return false;
+    }
+  };
+
+  const handleCloseCamera = () => {
+    setShowCamera(false);
+    startScanner();
+  };
+
   useEffect(() => {
     startScanner();
 
@@ -100,6 +107,16 @@ const QrScanner = () => {
       stopScanner();
     };
   }, []);
+
+  if (showCamera) {
+    return (
+      <FullScreenCamera
+        onPhotoTaken={handlePhotoTaken}
+        onClose={handleCloseCamera}
+        busNumber={busNumber}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-gray-900 flex flex-col">
@@ -210,15 +227,8 @@ const QrScanner = () => {
                 />
               </svg>
             </div>
-            <p className="mb-4">QR Code scanned successfully!</p>
-            {isRedirecting ? (
-              <div className="flex flex-col items-center">
-                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                <p>Redirecting...</p>
-              </div>
-            ) : (
-              <p>Preparing camera...</p>
-            )}
+            <p className="mb-4">Bus number verified: {busNumber}</p>
+            <p>Opening camera...</p>
           </div>
         )}
       </div>
