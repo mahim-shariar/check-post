@@ -1,6 +1,12 @@
 import React, { useRef, useState } from "react";
 import Webcam from "react-webcam";
-import { FaCamera, FaRedo, FaCheck, FaTimes } from "react-icons/fa";
+import {
+  FaCamera,
+  FaRedo,
+  FaCheck,
+  FaTimes,
+  FaExclamationTriangle,
+} from "react-icons/fa";
 
 const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   const webcamRef = useRef(null);
@@ -46,10 +52,10 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   };
 
   return (
-    <div className="relative w-full h-screen bg-black overflow-hidden">
+    <div className="fixed inset-0 w-full h-full bg-black overflow-hidden flex flex-col">
       {/* Flash effect when capturing */}
       {flashEffect && (
-        <div className="absolute inset-0 bg-white animate-flash"></div>
+        <div className="absolute inset-0 bg-white animate-flash z-30"></div>
       )}
 
       {/* Bus number display */}
@@ -69,25 +75,31 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
       </button>
 
       {/* Camera preview or captured image */}
-      {imgSrc ? (
-        <img
-          src={imgSrc}
-          alt="Captured bus"
-          className="w-full h-full object-cover"
-        />
-      ) : (
-        <Webcam
-          ref={webcamRef}
-          audio={false}
-          screenshotFormat="image/jpeg"
-          videoConstraints={{
-            facingMode: "environment",
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          }}
-          className="w-full h-full object-cover"
-        />
-      )}
+      <div className="flex-1 relative">
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            alt="Captured bus"
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <Webcam
+            ref={webcamRef}
+            audio={false}
+            screenshotFormat="image/jpeg"
+            videoConstraints={{
+              facingMode: "environment",
+              width: { ideal: 4096 },
+              height: { ideal: 2160 },
+            }}
+            className="absolute top-0 left-0 w-full h-full object-cover"
+            forceScreenshotSourceSize={true}
+            mirrored={false}
+            onUserMedia={() => console.log("Webcam access granted")}
+            onUserMediaError={(err) => console.log("Webcam error:", err)}
+          />
+        )}
+      </div>
 
       {/* Upload success message */}
       {uploadSuccess && (
