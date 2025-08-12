@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import FullScreenCamera from "./FullScreenCamera";
+import FullScreenCamera from "../components/FullScreenCamera";
 
 const QrScanner = () => {
   const qrRef = useRef(null);
