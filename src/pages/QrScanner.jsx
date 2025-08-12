@@ -34,7 +34,7 @@ const QrScanner = () => {
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 },
+            qrbox: { width: 350, height: 350 },
           },
           (decodedText) => {
             if (busNumberPattern.test(decodedText) && !hasScannedRef.current) {
@@ -141,7 +141,7 @@ const QrScanner = () => {
             {/* Scanning animation - now positioned relative to the container */}
             {isScanning && (
               <div className="absolute top-0 left-0 right-0 h-full overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-blue-400/50 rounded-full animate-scan"></div>
+                <div className="absolute top-0 left-0 right-0 h-full bg-blue-400/50 rounded-full animate-scan"></div>
               </div>
             )}
           </div>
