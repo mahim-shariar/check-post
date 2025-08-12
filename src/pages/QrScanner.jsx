@@ -7,23 +7,20 @@ const QrScanner = () => {
   const html5QrCodeRef = useRef(null);
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState(null);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [busNumber, setBusNumber] = useState(null);
   const [scanSuccess, setScanSuccess] = useState(false);
-  const hasScannedRef = useRef(false); // Track if we've already scanned
+  const hasScannedRef = useRef(false);
+  const [torchOn, setTorchOn] = useState(false);
 
   const busNumberPattern = /^\d{2}-\d{2}-\d{3}$/;
 
   const startScanner = async () => {
-    if (!qrRef.current) {
-      console.error("QR container not available.");
-      return;
-    }
+    if (!qrRef.current) return;
 
     setCameraError(null);
     setScanSuccess(false);
-    hasScannedRef.current = false; // Reset scan flag when starting
+    hasScannedRef.current = false;
 
     try {
       const html5QrCode = new Html5Qrcode(qrRef.current.id);
@@ -32,42 +29,37 @@ const QrScanner = () => {
       const devices = await Html5Qrcode.getCameras();
       if (devices && devices.length > 0) {
         setIsScanning(true);
-        setIsInitialized(true);
 
         await html5QrCode.start(
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 250, height: 50 },
+            qrbox: { width: 250, height: 250 },
           },
           (decodedText) => {
             if (busNumberPattern.test(decodedText) && !hasScannedRef.current) {
-              hasScannedRef.current = true; // Mark as scanned
+              hasScannedRef.current = true;
               setBusNumber(decodedText);
               setScanSuccess(true);
 
-              // Play sound only once
               if (typeof window !== "undefined") {
                 const audio = new Audio("/success-beep.mp3");
                 audio.play().catch((e) => console.log("Audio play error:", e));
               }
 
-              // Stop scanner and open camera
               stopScanner().then(() => {
                 setShowCamera(true);
               });
             }
           },
-          (errorMessage) => {}
+          () => {}
         );
       } else {
-        setCameraError("No camera found on this device.");
+        setCameraError("No camera available");
       }
     } catch (err) {
       console.error("Camera error:", err);
-      setCameraError(
-        err.message || "Failed to access camera. Please check permissions."
-      );
+      setCameraError(err.message || "Camera access denied");
       setIsScanning(false);
     }
   };
@@ -84,14 +76,16 @@ const QrScanner = () => {
     }
   };
 
-  const handlePhotoTaken = async (photoData) => {
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      return true;
-    } catch (error) {
-      console.error("Upload error:", error);
-      return false;
+  const toggleTorch = async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        await html5QrCodeRef.current.applyVideoConstraints({
+          advanced: [{ torch: !torchOn }],
+        });
+        setTorchOn(!torchOn);
+      } catch (err) {
+        console.error("Torch error:", err);
+      }
     }
   };
 
@@ -102,16 +96,13 @@ const QrScanner = () => {
 
   useEffect(() => {
     startScanner();
-
-    return () => {
-      stopScanner();
-    };
+    return () => stopScanner();
   }, []);
 
   if (showCamera) {
     return (
       <FullScreenCamera
-        onPhotoTaken={handlePhotoTaken}
+        onPhotoTaken={() => new Promise((resolve) => setTimeout(resolve, 1500))}
         onClose={handleCloseCamera}
         busNumber={busNumber}
       />
@@ -119,74 +110,85 @@ const QrScanner = () => {
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-900 flex flex-col">
-      <div className="relative flex-1">
+    <div className="fixed inset-0 bg-gray-900 flex flex-col items-center justify-center">
+      {/* Scanner container */}
+      <div className="relative w-full max-w-md h-96 rounded-xl overflow-hidden shadow-2xl">
         <div
           ref={qrRef}
           id="qr-reader"
-          className={`w-full min-h-screen bg-black transition-opacity duration-500 ${
-            isInitialized ? "opacity-100" : "opacity-0"
-          }`}
+          className="w-full h-full bg-black"
         ></div>
 
+        {/* Scanner overlay */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="relative w-64 h-64 sm:w-80 sm:h-80">
-            <div className="absolute inset-0 border-2 border-blue-400 rounded-lg opacity-80"></div>
-
+          <div className="relative w-64 h-64">
+            {/* Frame corners */}
+            <div className="absolute inset-0 border-2 border-white/20 rounded-lg"></div>
             {[0, 90, 180, 270].map((rotation, i) => (
               <div
                 key={i}
-                className="absolute w-12 h-12 border-t-4 border-r-4 border-blue-500"
+                className="absolute w-8 h-8 border-t-4 border-r-4 border-blue-400"
                 style={{
                   top: i < 2 ? "0" : "auto",
                   bottom: i >= 2 ? "0" : "auto",
                   left: i === 0 || i === 3 ? "0" : "auto",
                   right: i === 1 || i === 2 ? "0" : "auto",
                   transform: `rotate(${rotation}deg)`,
-                  opacity: isScanning ? 1 : 0.5,
-                  transition: "opacity 0.3s ease",
                 }}
               ></div>
             ))}
 
+            {/* Scanning animation */}
             {isScanning && (
-              <>
-                <div className="absolute inset-0 overflow-hidden rounded-lg">
-                  {Array.from({ length: 20 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="absolute top-0 left-0 right-0 h-px bg-blue-400 opacity-20"
-                      style={{
-                        top: `${(i * 100) / 20}%`,
-                        animation: `scanLine 2s ${i * 0.1}s infinite linear`,
-                      }}
-                    ></div>
-                  ))}
-                </div>
-
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping opacity-75"></div>
-                </div>
-              </>
+              <div className="absolute top-0 left-0 right-0 h-1 bg-blue-400/50 rounded-full animate-scan"></div>
             )}
           </div>
         </div>
 
-        {isScanning && (
-          <div className="absolute top-4 left-0 right-0 flex justify-center">
-            <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm flex items-center">
-              <span className="w-2 h-2 mr-2 rounded-full bg-green-500 animate-pulse"></span>
-              Scanning...
-            </div>
-          </div>
-        )}
+        {/* Controls */}
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
+          <button
+            onClick={toggleTorch}
+            className="p-3 bg-black/50 rounded-full backdrop-blur-sm"
+            aria-label="Toggle torch"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-6 w-6 ${
+                torchOn ? "text-yellow-300" : "text-white"
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
 
-        {cameraError && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 text-white p-6 rounded-lg max-w-xs text-center">
-            <div className="text-red-400 mb-2">
+      {/* Instructions */}
+      <div className="mt-8 text-center px-4 max-w-md">
+        <h1 className="text-2xl font-bold text-white mb-2">Scan Bus QR Code</h1>
+        <p className="text-gray-300">
+          Point your camera at the QR code to scan. Make sure it's well lit and
+          within the frame.
+        </p>
+      </div>
+
+      {/* Status indicators */}
+      {cameraError && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-6">
+          <div className="bg-gray-800 rounded-xl p-6 max-w-sm text-center">
+            <div className="text-red-400 mb-4">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-10 w-10 mx-auto"
+                className="h-12 w-12 mx-auto"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -199,22 +201,27 @@ const QrScanner = () => {
                 />
               </svg>
             </div>
-            <p className="mb-4">{cameraError}</p>
+            <h2 className="text-xl font-semibold text-white mb-2">
+              Camera Error
+            </h2>
+            <p className="text-gray-300 mb-6">{cameraError}</p>
             <button
               onClick={startScanner}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm"
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium text-white transition-colors"
             >
-              Retry
+              Try Again
             </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {scanSuccess && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 text-white p-6 rounded-lg max-w-xs text-center">
-            <div className="text-green-400 mb-2">
+      {scanSuccess && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-6">
+          <div className="bg-gray-800 rounded-xl p-6 max-w-sm text-center animate-pop-in">
+            <div className="text-green-400 mb-4">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-10 w-10 mx-auto"
+                className="h-12 w-12 mx-auto"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -227,29 +234,49 @@ const QrScanner = () => {
                 />
               </svg>
             </div>
-            <p className="mb-4">Bus number verified: {busNumber}</p>
-            <p>Opening camera...</p>
+            <h2 className="text-xl font-semibold text-white mb-2">
+              Scan Successful
+            </h2>
+            <p className="text-gray-300 mb-1">Bus Number:</p>
+            <p className="text-2xl font-bold text-blue-400 mb-6">{busNumber}</p>
+            <div className="flex justify-center">
+              <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <p className="text-gray-400 mt-4 text-sm">Preparing camera...</p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
+      {/* Global styles */}
       <style jsx global>{`
-        @keyframes scanLine {
+        @keyframes scan {
           0% {
             transform: translateY(-100%);
-            opacity: 0;
-          }
-          10% {
-            opacity: 0.8;
-          }
-          90% {
-            opacity: 0.8;
           }
           100% {
-            transform: translateY(100%);
-            opacity: 0;
+            transform: translateY(400%);
           }
         }
+
+        @keyframes pop-in {
+          0% {
+            transform: scale(0.9);
+            opacity: 0;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+
+        .animate-scan {
+          animation: scan 2s linear infinite;
+        }
+
+        .animate-pop-in {
+          animation: pop-in 0.3s ease-out forwards;
+        }
+
         body {
           overflow: hidden;
         }
