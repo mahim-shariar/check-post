@@ -34,7 +34,7 @@ const QrScanner = () => {
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 350, height: 350 },
+            qrbox: { width: 250, height: 250 },
           },
           (decodedText) => {
             if (busNumberPattern.test(decodedText) && !hasScannedRef.current) {
@@ -48,7 +48,10 @@ const QrScanner = () => {
               }
 
               stopScanner().then(() => {
-                setShowCamera(true);
+                // Add a 1.5 second delay before showing camera
+                setTimeout(() => {
+                  setShowCamera(true);
+                }, 1500);
               });
             }
           },
@@ -121,28 +124,29 @@ const QrScanner = () => {
 
         {/* Scanner overlay */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="relative w-64 h-64">
-            {/* Frame corners */}
-            <div className="absolute inset-0 border-2 border-white/20 rounded-lg"></div>
-            {[0, 90, 180, 270].map((rotation, i) => (
+          <div className="relative w-80 h-80">
+            {/* Frame border */}
+            <div className="absolute inset-0 border-4 border-white/10 rounded-lg"></div>
+
+            {/* Corner markers */}
+            {[
+              { position: "top-0 left-0", borders: "border-t-4 border-l-4" },
+              { position: "top-0 right-0", borders: "border-t-4 border-r-4" },
+              { position: "bottom-0 left-0", borders: "border-b-4 border-l-4" },
+              {
+                position: "bottom-0 right-0",
+                borders: "border-b-4 border-r-4",
+              },
+            ].map((corner, i) => (
               <div
                 key={i}
-                className="absolute w-8 h-8 border-t-4 border-r-4 border-blue-400"
-                style={{
-                  top: i < 2 ? "0" : "auto",
-                  bottom: i >= 2 ? "0" : "auto",
-                  left: i === 0 || i === 3 ? "0" : "auto",
-                  right: i === 1 || i === 2 ? "0" : "auto",
-                  transform: `rotate(${rotation}deg)`,
-                }}
+                className={`absolute w-16 h-16 border-blue-500 ${corner.position} ${corner.borders}`}
               ></div>
             ))}
 
-            {/* Scanning animation - now positioned relative to the container */}
+            {/* Scanning line */}
             {isScanning && (
-              <div className="absolute top-0 left-0 right-0 h-full overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-full bg-blue-400/50 rounded-full animate-scan"></div>
-              </div>
+              <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 animate-scan-line"></div>
             )}
           </div>
         </div>
@@ -251,12 +255,20 @@ const QrScanner = () => {
 
       {/* Global styles */}
       <style jsx global>{`
-        @keyframes scan {
+        @keyframes scan-line {
           0% {
-            transform: translateY(-100%);
+            transform: translateY(0);
+            opacity: 0;
+          }
+          10% {
+            opacity: 1;
+          }
+          90% {
+            opacity: 1;
           }
           100% {
-            transform: translateY(640px);
+            transform: translateY(79vh);
+            opacity: 0;
           }
         }
 
@@ -271,8 +283,8 @@ const QrScanner = () => {
           }
         }
 
-        .animate-scan {
-          animation: scan 2s linear infinite;
+        .animate-scan-line {
+          animation: scan-line 2s ease-in-out infinite;
         }
 
         .animate-pop-in {
