@@ -21,7 +21,7 @@ const FullScreenCamera = () => {
       setBusNumber(scannedBus);
     } else {
       // If no bus number found, redirect back to scanner
-      navigate("/qr-scanner");
+      // navigate("/qr-scanner");
     }
   }, [navigate]);
 
