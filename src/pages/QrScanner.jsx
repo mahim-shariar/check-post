@@ -38,7 +38,7 @@ const QrScanner = () => {
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 250, height: 180 },
+            qrbox: { width: 250, height: 150 },
           },
           (decodedText) => {
             if (busNumberPattern.test(decodedText)) {
@@ -119,7 +119,7 @@ const QrScanner = () => {
       <div
         ref={qrRef}
         id="qr-reader"
-        className={`w-full h-full bg-black ${
+        className={`w-full min-h-full bg-black ${
           isInitialized ? "opacity-100" : "opacity-0"
         }`}
       ></div>
