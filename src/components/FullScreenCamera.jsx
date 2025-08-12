@@ -113,12 +113,6 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
             >
               Done
             </button>
-            <button
-              onClick={retake}
-              className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-full transition-colors"
-            >
-              Take Another
-            </button>
           </div>
         </div>
       ) : uploadError ? (
