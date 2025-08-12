@@ -124,7 +124,7 @@ const QrScanner = () => {
         <div
           ref={qrRef}
           id="qr-reader"
-          className={`w-full h-full bg-black transition-opacity duration-500 ${
+          className={`w-full min-h-screen bg-black transition-opacity duration-500 ${
             isInitialized ? "opacity-100" : "opacity-0"
           }`}
         ></div>
