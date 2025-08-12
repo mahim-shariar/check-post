@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import Webcam from "react-webcam";
-import { FaCamera, FaRedo, FaCheck, FaTimes } from "react-icons/fa";
+import { FaCamera, FaRedo, FaCheck, FaTimes, FaVideo } from "react-icons/fa";
 
 const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   const webcamRef = useRef(null);
@@ -13,7 +13,7 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   const [cameraError, setCameraError] = useState(null);
   const [showPermissionRequest, setShowPermissionRequest] = useState(false);
 
-  // Initial check for existing permissions
+  // Check existing permissions on mount
   useEffect(() => {
     const checkExistingPermissions = async () => {
       try {
@@ -21,12 +21,8 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
         const hasPermissions = devices.some(
           (device) => device.kind === "videoinput" && device.label
         );
-
-        if (hasPermissions) {
-          setHasCameraPermission(true);
-        } else {
-          setShowPermissionRequest(true);
-        }
+        setHasCameraPermission(hasPermissions);
+        setShowPermissionRequest(!hasPermissions);
       } catch (err) {
         console.error("Error checking permissions:", err);
         setShowPermissionRequest(true);
@@ -38,7 +34,13 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
 
   const requestCameraAccess = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
       stream.getTracks().forEach((track) => track.stop());
       setHasCameraPermission(true);
       setCameraError(null);
@@ -48,6 +50,11 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
       setCameraError(err);
       setHasCameraPermission(false);
     }
+  };
+
+  const handleRetryPermission = async () => {
+    setCameraError(null);
+    await requestCameraAccess();
   };
 
   const capture = () => {
@@ -86,12 +93,6 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
     }
   };
 
-  const videoConstraints = {
-    facingMode: "environment",
-    width: { ideal: 1920 },
-    height: { ideal: 1080 },
-  };
-
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
       {/* Flash effect when capturing */}
@@ -115,7 +116,7 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
         <FaTimes className="text-xl" />
       </button>
 
-      {/* Camera preview or captured image */}
+      {/* Main camera content */}
       {imgSrc ? (
         <img
           src={imgSrc}
@@ -124,47 +125,60 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
         />
       ) : (
         <>
-          {showPermissionRequest ? (
+          {showPermissionRequest && !cameraError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white p-4 text-center z-20">
               <div className="bg-blue-500 rounded-full p-4 mb-4">
-                <FaCamera className="text-2xl" />
+                <FaVideo className="text-2xl" />
               </div>
-              <h2 className="text-xl font-bold mb-2">
-                Camera Permission Needed
-              </h2>
+              <h2 className="text-xl font-bold mb-2">Camera Access Required</h2>
               <p className="mb-4 text-gray-300 max-w-md">
-                To verify the bus, we need access to your camera.
+                To verify bus {busNumber}, please allow camera access
               </p>
               <button
                 onClick={requestCameraAccess}
                 className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-full transition-colors"
               >
-                Allow Camera Access
+                Allow Camera
               </button>
             </div>
-          ) : cameraError ? (
+          )}
+
+          {cameraError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white p-4 text-center z-20">
               <div className="bg-red-500 rounded-full p-4 mb-4">
                 <FaTimes className="text-2xl" />
               </div>
-              <h2 className="text-xl font-bold mb-2">Camera Access Denied</h2>
+              <h2 className="text-xl font-bold mb-2">Camera Blocked</h2>
               <p className="mb-4 text-gray-300 max-w-md">
-                Please enable camera permissions in your browser settings and
-                refresh the page.
+                Camera access is required but was denied. Please try again.
               </p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
-              >
-                Refresh Page
-              </button>
+              <div className="flex gap-4">
+                <button
+                  onClick={handleRetryPermission}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-full transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-          ) : hasCameraPermission ? (
+          )}
+
+          {hasCameraPermission && !cameraError && (
             <Webcam
               ref={webcamRef}
               audio={false}
               screenshotFormat="image/jpeg"
-              videoConstraints={videoConstraints}
+              videoConstraints={{
+                facingMode: "environment",
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+              }}
               className="w-full h-full object-cover"
               forceScreenshotSourceSize={true}
               onUserMediaError={(err) => {
@@ -173,10 +187,6 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
                 setHasCameraPermission(false);
               }}
             />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-black text-white">
-              <p>Loading camera...</p>
-            </div>
           )}
         </>
       )}
