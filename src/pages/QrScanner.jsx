@@ -38,7 +38,7 @@ const QrScanner = () => {
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 250, height: 100 },
+            qrbox: { width: 250, height: 0 },
           },
           (decodedText) => {
             if (busNumberPattern.test(decodedText) && !hasScannedRef.current) {
