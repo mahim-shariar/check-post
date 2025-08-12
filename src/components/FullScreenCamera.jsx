@@ -2,7 +2,11 @@ import React, { useRef, useState, useEffect } from "react";
 import Webcam from "react-webcam";
 import { FaCamera, FaRedo, FaCheck, FaTimes, FaVideo } from "react-icons/fa";
 
-const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
+const FullScreenCamera = ({
+  onPhotoTaken = () => {},
+  onClose = () => {},
+  busNumber = "40-40-001",
+}) => {
   const webcamRef = useRef(null);
   const [imgSrc, setImgSrc] = useState(null);
   const [flashEffect, setFlashEffect] = useState(false);

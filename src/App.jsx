@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import QrScanner from "./pages/QrScanner";
+import FullScreenCamera from "./components/FullScreenCamera";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
               </PrivateRoute>
             }
           /> */}
+          <Route path="/camera" element={<FullScreenCamera />} />
         </Routes>
       </Router>
     </AuthProvider>
