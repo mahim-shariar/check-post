@@ -1,13 +1,10 @@
-import React, { useRef, useState, useEffect } from "react";
-import Webcam from "react-webcam";
+import { useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaCamera, FaRedo, FaCheck, FaTimes, FaVideo } from "react-icons/fa";
 
-const FullScreenCamera = ({
-  onPhotoTaken = () => {},
-  onClose = () => {},
-  busNumber = "40-40-001",
-}) => {
+const FullScreenCamera = () => {
   const webcamRef = useRef(null);
+  const navigate = useNavigate();
   const [imgSrc, setImgSrc] = useState(null);
   const [flashEffect, setFlashEffect] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -15,25 +12,35 @@ const FullScreenCamera = ({
   const [uploadError, setUploadError] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [cameraError, setCameraError] = useState(null);
-  const [showPermissionRequest, setShowPermissionRequest] = useState(false);
+  const [busNumber, setBusNumber] = useState("");
 
-  // Check existing permissions on mount
+  // Get scanned bus number from localStorage
   useEffect(() => {
-    const checkExistingPermissions = async () => {
+    const scannedBus = localStorage.getItem("scannedBusNumber");
+    if (scannedBus) {
+      setBusNumber(scannedBus);
+    } else {
+      // If no bus number found, redirect back to scanner
+      navigate("/qr-scanner");
+    }
+  }, [navigate]);
+
+  // Check camera permissions
+  useEffect(() => {
+    const checkPermissions = async () => {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const hasPermissions = devices.some(
           (device) => device.kind === "videoinput" && device.label
         );
         setHasCameraPermission(hasPermissions);
-        setShowPermissionRequest(!hasPermissions);
       } catch (err) {
         console.error("Error checking permissions:", err);
-        setShowPermissionRequest(true);
+        setCameraError("Could not access camera");
       }
     };
 
-    checkExistingPermissions();
+    checkPermissions();
   }, []);
 
   const requestCameraAccess = async () => {
@@ -48,17 +55,11 @@ const FullScreenCamera = ({
       stream.getTracks().forEach((track) => track.stop());
       setHasCameraPermission(true);
       setCameraError(null);
-      setShowPermissionRequest(false);
     } catch (err) {
       console.error("Camera permission error:", err);
-      setCameraError(err);
+      setCameraError(err.message || "Camera access denied");
       setHasCameraPermission(false);
     }
-  };
-
-  const handleRetryPermission = async () => {
-    setCameraError(null);
-    await requestCameraAccess();
   };
 
   const capture = () => {
@@ -78,17 +79,40 @@ const FullScreenCamera = ({
     setUploadError(false);
   };
 
-  const savePhoto = async () => {
-    if (!imgSrc) return;
+  const handleSubmit = async () => {
+    if (!imgSrc || !busNumber) return;
 
     setIsUploading(true);
+    setUploadError(false);
+
     try {
-      const success = await onPhotoTaken(imgSrc);
-      if (success) {
-        setUploadSuccess(true);
-      } else {
-        setUploadError(true);
-      }
+      // Create form data
+      const formData = new FormData();
+      formData.append("busNumber", busNumber);
+      formData.append(
+        "timestamp",
+        localStorage.getItem("scanTimestamp") || new Date().toISOString()
+      );
+
+      // Convert base64 image to blob
+      const blob = await fetch(imgSrc).then((res) => res.blob());
+      formData.append("image", blob, "bus-photo.jpg");
+
+      // Send to server
+      const response = await fetch("/api/verify", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const result = await response.json();
+
+      // Clear stored data
+      localStorage.removeItem("scannedBusNumber");
+      localStorage.removeItem("scanTimestamp");
+
+      setUploadSuccess(true);
     } catch (error) {
       console.error("Upload error:", error);
       setUploadError(true);
@@ -97,9 +121,15 @@ const FullScreenCamera = ({
     }
   };
 
+  const handleClose = () => {
+    localStorage.removeItem("scannedBusNumber");
+    localStorage.removeItem("scanTimestamp");
+    navigate("/");
+  };
+
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
-      {/* Flash effect when capturing */}
+      {/* Flash effect */}
       {flashEffect && (
         <div className="absolute inset-0 bg-white animate-flash"></div>
       )}
@@ -113,14 +143,14 @@ const FullScreenCamera = ({
 
       {/* Close button */}
       <button
-        onClick={onClose}
+        onClick={handleClose}
         className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 rounded-full text-white"
         aria-label="Close camera"
       >
         <FaTimes className="text-xl" />
       </button>
 
-      {/* Main camera content */}
+      {/* Main content */}
       {imgSrc ? (
         <img
           src={imgSrc}
@@ -129,7 +159,7 @@ const FullScreenCamera = ({
         />
       ) : (
         <>
-          {showPermissionRequest && !cameraError && (
+          {!hasCameraPermission && !cameraError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white p-4 text-center z-20">
               <div className="bg-blue-500 rounded-full p-4 mb-4">
                 <FaVideo className="text-2xl" />
@@ -154,17 +184,17 @@ const FullScreenCamera = ({
               </div>
               <h2 className="text-xl font-bold mb-2">Camera Blocked</h2>
               <p className="mb-4 text-gray-300 max-w-md">
-                Camera access is required but was denied. Please try again.
+                {cameraError}. Please try again.
               </p>
               <div className="flex gap-4">
                 <button
-                  onClick={handleRetryPermission}
+                  onClick={requestCameraAccess}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
                 >
                   Try Again
                 </button>
                 <button
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-full transition-colors"
                 >
                   Cancel
@@ -174,28 +204,18 @@ const FullScreenCamera = ({
           )}
 
           {hasCameraPermission && !cameraError && (
-            <Webcam
+            <video
               ref={webcamRef}
-              audio={false}
-              screenshotFormat="image/jpeg"
-              videoConstraints={{
-                facingMode: "environment",
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
-              }}
+              autoPlay
+              playsInline
+              muted
               className="w-full h-full object-cover"
-              forceScreenshotSourceSize={true}
-              onUserMediaError={(err) => {
-                console.error("Webcam error:", err);
-                setCameraError(err);
-                setHasCameraPermission(false);
-              }}
             />
           )}
         </>
       )}
 
-      {/* Upload status messages */}
+      {/* Upload status */}
       {uploadSuccess ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center z-20">
           <div className="bg-green-500 rounded-full p-4 mb-4">
@@ -205,14 +225,12 @@ const FullScreenCamera = ({
           <p className="mb-4 text-gray-300">
             Bus {busNumber} has been successfully verified.
           </p>
-          <div className="flex gap-4">
-            <button
-              onClick={onClose}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
-            >
-              Done
-            </button>
-          </div>
+          <button
+            onClick={handleClose}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
+          >
+            Done
+          </button>
         </div>
       ) : uploadError ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center z-20">
@@ -231,7 +249,7 @@ const FullScreenCamera = ({
           </button>
         </div>
       ) : (
-        /* Camera controls - only show if we have camera permission and no error */
+        /* Camera controls */
         hasCameraPermission &&
         !cameraError && (
           <div className="absolute bottom-8 left-0 right-0 flex justify-center z-10">
@@ -246,7 +264,7 @@ const FullScreenCamera = ({
                   <FaRedo className="text-black text-xl" />
                 </button>
                 <button
-                  onClick={savePhoto}
+                  onClick={handleSubmit}
                   className="flex items-center justify-center bg-green-500 hover:bg-green-600 rounded-full p-4 transition-all"
                   aria-label="Save photo"
                   disabled={isUploading}
@@ -271,7 +289,7 @@ const FullScreenCamera = ({
         )
       )}
 
-      {/* Flash animation style */}
+      {/* Styles */}
       <style jsx global>{`
         @keyframes flash {
           0% {
@@ -283,6 +301,9 @@ const FullScreenCamera = ({
         }
         .animate-flash {
           animation: flash 0.3s ease-out;
+        }
+        video {
+          transform: scaleX(-1); /* Mirror the video */
         }
       `}</style>
     </div>
