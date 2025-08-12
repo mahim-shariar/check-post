@@ -10,6 +10,7 @@ const QrScanner = () => {
   const [cameraError, setCameraError] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const hasScannedRef = useRef(false);
 
   const busNumberPattern = /^\d{2}-\d{2}-\d{3}$/;
@@ -53,10 +54,16 @@ const QrScanner = () => {
                 const audio = new Audio("/success-beep.mp3");
                 audio.play().catch((e) => console.log("Audio play error:", e));
 
-                // Stop scanner and navigate to camera route
-                stopScanner().then(() => {
-                  navigate("/camera");
-                });
+                // Show success for 1.5 seconds before redirecting
+                setTimeout(() => {
+                  setIsRedirecting(true);
+                  stopScanner().then(() => {
+                    // Small delay to show the redirecting state
+                    setTimeout(() => {
+                      navigate("/camera");
+                    }, 500);
+                  });
+                }, 1500);
               }
             }
           },
@@ -204,7 +211,14 @@ const QrScanner = () => {
               </svg>
             </div>
             <p className="mb-4">QR Code scanned successfully!</p>
-            <p>Redirecting to camera...</p>
+            {isRedirecting ? (
+              <div className="flex flex-col items-center">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                <p>Redirecting...</p>
+              </div>
+            ) : (
+              <p>Preparing camera...</p>
+            )}
           </div>
         )}
       </div>
