@@ -11,6 +11,7 @@ const QrScanner = () => {
   const [showCamera, setShowCamera] = useState(false);
   const [busNumber, setBusNumber] = useState(null);
   const [scanSuccess, setScanSuccess] = useState(false);
+  const hasScannedRef = useRef(false); // Track if we've already scanned
 
   const busNumberPattern = /^\d{2}-\d{2}-\d{3}$/;
 
@@ -22,6 +23,7 @@ const QrScanner = () => {
 
     setCameraError(null);
     setScanSuccess(false);
+    hasScannedRef.current = false; // Reset scan flag when starting
 
     try {
       const html5QrCode = new Html5Qrcode(qrRef.current.id);
@@ -39,19 +41,21 @@ const QrScanner = () => {
             qrbox: { width: 250, height: 250 },
           },
           (decodedText) => {
-            if (busNumberPattern.test(decodedText)) {
+            if (busNumberPattern.test(decodedText) && !hasScannedRef.current) {
+              hasScannedRef.current = true; // Mark as scanned
               setBusNumber(decodedText);
               setScanSuccess(true);
 
-              setTimeout(() => {
-                stopScanner();
-                setShowCamera(true);
-              }, 1000);
-
+              // Play sound only once
               if (typeof window !== "undefined") {
                 const audio = new Audio("/success-beep.mp3");
                 audio.play().catch((e) => console.log("Audio play error:", e));
               }
+
+              // Stop scanner and open camera
+              stopScanner().then(() => {
+                setShowCamera(true);
+              });
             }
           },
           (errorMessage) => {}
