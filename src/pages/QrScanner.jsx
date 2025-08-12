@@ -1,78 +1,23 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import FullScreenCamera from "../components/FullScreenCamera";
+
+const BUS_NUMBER_PATTERN = /^\d{2}-\d{2}-\d{3}$/;
 
 const QrScanner = () => {
   const qrRef = useRef(null);
   const html5QrCodeRef = useRef(null);
+  const hasScannedRef = useRef(false);
+
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [busNumber, setBusNumber] = useState(null);
   const [scanSuccess, setScanSuccess] = useState(false);
-  const hasScannedRef = useRef(false); // Track if we've already scanned
+  const [isLoadingCamera, setIsLoadingCamera] = useState(false);
 
-  const busNumberPattern = /^\d{2}-\d{2}-\d{3}$/;
-
-  const startScanner = async () => {
-    if (!qrRef.current) {
-      console.error("QR container not available.");
-      return;
-    }
-
-    setCameraError(null);
-    setScanSuccess(false);
-    hasScannedRef.current = false; // Reset scan flag when starting
-
-    try {
-      const html5QrCode = new Html5Qrcode(qrRef.current.id);
-      html5QrCodeRef.current = html5QrCode;
-
-      const devices = await Html5Qrcode.getCameras();
-      if (devices && devices.length > 0) {
-        setIsScanning(true);
-        setIsInitialized(true);
-
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-          },
-          (decodedText) => {
-            if (busNumberPattern.test(decodedText) && !hasScannedRef.current) {
-              hasScannedRef.current = true; // Mark as scanned
-              setBusNumber(decodedText);
-              setScanSuccess(true);
-
-              // Play sound only once
-              if (typeof window !== "undefined") {
-                const audio = new Audio("/success-beep.mp3");
-                audio.play().catch((e) => console.log("Audio play error:", e));
-              }
-
-              // Stop scanner and open camera
-              stopScanner().then(() => {
-                setShowCamera(true);
-              });
-            }
-          },
-          (errorMessage) => {}
-        );
-      } else {
-        setCameraError("No camera found on this device.");
-      }
-    } catch (err) {
-      console.error("Camera error:", err);
-      setCameraError(
-        err.message || "Failed to access camera. Please check permissions."
-      );
-      setIsScanning(false);
-    }
-  };
-
-  const stopScanner = async () => {
+  const stopScanner = useCallback(async () => {
     if (html5QrCodeRef.current && isScanning) {
       try {
         await html5QrCodeRef.current.stop();
@@ -82,11 +27,66 @@ const QrScanner = () => {
         setIsScanning(false);
       }
     }
-  };
+  }, [isScanning]);
+
+  const startScanner = useCallback(async () => {
+    if (!qrRef.current) {
+      console.error("QR container not available.");
+      return;
+    }
+
+    setCameraError(null);
+    setScanSuccess(false);
+    hasScannedRef.current = false;
+    setIsLoadingCamera(true);
+
+    try {
+      if (!html5QrCodeRef.current) {
+        html5QrCodeRef.current = new Html5Qrcode(qrRef.current.id);
+      }
+
+      const devices = await Html5Qrcode.getCameras();
+      if (!devices.length) {
+        throw new Error("No camera found on this device.");
+      }
+
+      setIsScanning(true);
+      setIsInitialized(true);
+
+      await html5QrCodeRef.current.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          if (BUS_NUMBER_PATTERN.test(decodedText) && !hasScannedRef.current) {
+            hasScannedRef.current = true;
+            setBusNumber(decodedText);
+            setScanSuccess(true);
+
+            if (typeof window !== "undefined") {
+              const audio = new Audio("/success-beep.mp3");
+              audio.play().catch((e) => console.log("Audio play error:", e));
+            }
+
+            stopScanner().then(() => {
+              setTimeout(() => setShowCamera(true), 500);
+            });
+          }
+        },
+        () => {} // Ignore decode errors for smooth scanning
+      );
+    } catch (err) {
+      console.error("Camera error:", err);
+      setCameraError(
+        err.message || "Failed to access camera. Please check permissions."
+      );
+      setIsScanning(false);
+    } finally {
+      setIsLoadingCamera(false);
+    }
+  }, [stopScanner]);
 
   const handlePhotoTaken = async (photoData) => {
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500));
       return true;
     } catch (error) {
@@ -102,11 +102,10 @@ const QrScanner = () => {
 
   useEffect(() => {
     startScanner();
-
     return () => {
       stopScanner();
     };
-  }, []);
+  }, [startScanner, stopScanner]);
 
   if (showCamera) {
     return (
@@ -127,11 +126,12 @@ const QrScanner = () => {
           className={`w-full h-full bg-black transition-opacity duration-500 ${
             isInitialized ? "opacity-100" : "opacity-0"
           }`}
-        ></div>
+        />
 
+        {/* Overlay UI */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
           <div className="relative w-64 h-64 sm:w-80 sm:h-80">
-            <div className="absolute inset-0 border-2 border-blue-400 rounded-lg opacity-80"></div>
+            <div className="absolute inset-0 border-2 border-blue-400 rounded-lg opacity-80" />
 
             {[0, 90, 180, 270].map((rotation, i) => (
               <div
@@ -146,7 +146,7 @@ const QrScanner = () => {
                   opacity: isScanning ? 1 : 0.5,
                   transition: "opacity 0.3s ease",
                 }}
-              ></div>
+              />
             ))}
 
             {isScanning && (
@@ -160,30 +160,38 @@ const QrScanner = () => {
                         top: `${(i * 100) / 20}%`,
                         animation: `scanLine 2s ${i * 0.1}s infinite linear`,
                       }}
-                    ></div>
+                    />
                   ))}
                 </div>
-
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping opacity-75" />
                 </div>
               </>
             )}
           </div>
         </div>
 
-        {isScanning && (
+        {/* Status Messages */}
+        {isLoadingCamera && (
+          <div className="absolute top-4 left-0 right-0 flex justify-center">
+            <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm">
+              Initializing camera...
+            </div>
+          </div>
+        )}
+
+        {isScanning && !isLoadingCamera && (
           <div className="absolute top-4 left-0 right-0 flex justify-center">
             <div className="px-4 py-2 bg-black bg-opacity-70 rounded-full text-white text-sm flex items-center">
-              <span className="w-2 h-2 mr-2 rounded-full bg-green-500 animate-pulse"></span>
+              <span className="w-2 h-2 mr-2 rounded-full bg-green-500 animate-pulse" />
               Scanning...
             </div>
           </div>
         )}
 
         {cameraError && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 text-white p-6 rounded-lg max-w-xs text-center">
-            <div className="text-red-400 mb-2">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 text-white p-6 rounded-lg">
+            <div className="text-red-400 mb-3">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-10 w-10 mx-auto"
@@ -210,8 +218,8 @@ const QrScanner = () => {
         )}
 
         {scanSuccess && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 text-white p-6 rounded-lg max-w-xs text-center">
-            <div className="text-green-400 mb-2">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 text-white p-6 rounded-lg">
+            <div className="text-green-400 mb-3">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-10 w-10 mx-auto"
@@ -227,8 +235,9 @@ const QrScanner = () => {
                 />
               </svg>
             </div>
-            <p className="mb-4">Bus number verified: {busNumber}</p>
-            <p>Opening camera...</p>
+            <p className="mb-2 text-lg font-semibold">Bus number verified</p>
+            <p className="mb-4">{busNumber}</p>
+            <p className="text-sm opacity-80">Opening camera...</p>
           </div>
         )}
       </div>
@@ -239,9 +248,7 @@ const QrScanner = () => {
             transform: translateY(-100%);
             opacity: 0;
           }
-          10% {
-            opacity: 0.8;
-          }
+          10%,
           90% {
             opacity: 0.8;
           }
