@@ -1,12 +1,6 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import Webcam from "react-webcam";
-import {
-  FaCamera,
-  FaRedo,
-  FaCheck,
-  FaTimes,
-  FaExclamationTriangle,
-} from "react-icons/fa";
+import { FaCamera, FaRedo, FaCheck, FaTimes } from "react-icons/fa";
 
 const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   const webcamRef = useRef(null);
@@ -15,54 +9,6 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState(false);
-  const [hasPermission, setHasPermission] = useState(null);
-  const [isCameraSupported, setIsCameraSupported] = useState(true);
-
-  // Check camera permission and support
-  useEffect(() => {
-    const checkCamera = async () => {
-      try {
-        // Check if browser supports media devices
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          setIsCameraSupported(false);
-          return;
-        }
-
-        // Check camera permission
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        setHasPermission(true);
-        // Clean up
-        stream.getTracks().forEach((track) => track.stop());
-      } catch (err) {
-        if (err.name === "NotAllowedError") {
-          setHasPermission(false);
-        } else if (
-          err.name === "NotFoundError" ||
-          err.name === "OverconstrainedError"
-        ) {
-          setIsCameraSupported(false);
-        } else {
-          console.error("Camera error:", err);
-          setIsCameraSupported(false);
-        }
-      }
-    };
-
-    checkCamera();
-  }, []);
-
-  const requestPermission = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    } catch (err) {
-      console.error("Permission request failed:", err);
-      return false;
-    }
-    setHasPermission(true);
-    return true;
-  };
 
   const capture = () => {
     if (!webcamRef.current) return;
@@ -93,72 +39,19 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
         setUploadError(true);
       }
     } catch (error) {
+      console.error("Upload error:", error);
       setUploadError(true);
     } finally {
       setIsUploading(false);
     }
   };
 
-  // Camera not supported
-  if (!isCameraSupported) {
-    return (
-      <div className="relative w-full h-screen bg-black flex flex-col items-center justify-center text-white p-4 text-center">
-        <div className="bg-red-500 rounded-full p-4 mb-4">
-          <FaExclamationTriangle className="text-2xl" />
-        </div>
-        <h2 className="text-xl font-bold mb-2">Camera Not Available</h2>
-        <p className="mb-6 text-gray-300">
-          Your device doesn't have a camera or it's not supported.
-        </p>
-        <button
-          onClick={onClose}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
-        >
-          Go Back
-        </button>
-      </div>
-    );
-  }
-
-  // Permission denied
-  if (hasPermission === false) {
-    return (
-      <div className="relative w-full h-screen bg-black flex flex-col items-center justify-center text-white p-4 text-center">
-        <div className="bg-yellow-500 rounded-full p-4 mb-4">
-          <FaExclamationTriangle className="text-2xl" />
-        </div>
-        <h2 className="text-xl font-bold mb-2">Camera Permission Required</h2>
-        <p className="mb-6 text-gray-300">
-          Please enable camera permissions in your browser settings to use this
-          feature.
-        </p>
-        <div className="flex gap-4">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-full transition-colors"
-          >
-            Go Back
-          </button>
-          <button
-            onClick={requestPermission}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Permission not determined yet (loading)
-  if (hasPermission === null) {
-    return (
-      <div className="relative w-full h-screen bg-black flex flex-col items-center justify-center text-white p-4 text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
-        <p className="text-gray-300">Checking camera permissions...</p>
-      </div>
-    );
-  }
+  // Video constraints for the camera
+  const videoConstraints = {
+    facingMode: "environment",
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+  };
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
@@ -195,17 +88,14 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
           ref={webcamRef}
           audio={false}
           screenshotFormat="image/jpeg"
-          videoConstraints={{
-            facingMode: "environment",
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          }}
+          videoConstraints={videoConstraints}
           className="w-full h-full object-cover"
+          forceScreenshotSourceSize={true}
         />
       )}
 
-      {/* Upload success message */}
-      {uploadSuccess && (
+      {/* Upload status messages */}
+      {uploadSuccess ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center z-20">
           <div className="bg-green-500 rounded-full p-4 mb-4">
             <FaCheck className="text-2xl" />
@@ -229,13 +119,10 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
             </button>
           </div>
         </div>
-      )}
-
-      {/* Upload error message */}
-      {uploadError && (
+      ) : uploadError ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 text-white p-4 text-center z-20">
           <div className="bg-red-500 rounded-full p-4 mb-4">
-            <FaExclamationTriangle className="text-2xl" />
+            <FaTimes className="text-2xl" />
           </div>
           <h2 className="text-xl font-bold mb-2">Upload Failed</h2>
           <p className="mb-4 text-gray-300">
@@ -248,10 +135,8 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
             Retry
           </button>
         </div>
-      )}
-
-      {/* Camera controls */}
-      {!uploadSuccess && !uploadError && (
+      ) : (
+        /* Camera controls */
         <div className="absolute bottom-8 left-0 right-0 flex justify-center z-10">
           {imgSrc ? (
             <div className="flex gap-6 bg-black bg-opacity-40 backdrop-blur-sm rounded-full p-3">
@@ -263,7 +148,6 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
               >
                 <FaRedo className="text-black text-xl" />
               </button>
-
               <button
                 onClick={savePhoto}
                 className="flex items-center justify-center bg-green-500 hover:bg-green-600 rounded-full p-4 transition-all"
