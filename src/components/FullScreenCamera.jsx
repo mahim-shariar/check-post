@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { Camera } from "react-html5-camera-photo";
 import "react-html5-camera-photo/build/css/index.css";
 import { FaCamera, FaRedo, FaCheck, FaTimes, FaSyncAlt } from "react-icons/fa";
@@ -66,15 +66,6 @@ const FullScreenCamera = ({ onPhotoTaken, onClose, busNumber }) => {
           Bus: {busNumber}
         </div>
       </div>
-
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 rounded-full text-white"
-        aria-label="Close camera"
-      >
-        <FaTimes className="text-xl" />
-      </button>
 
       {/* Camera switch button - only visible when not viewing captured image */}
       {!imgSrc && (
