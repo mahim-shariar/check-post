@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import FullScreenCamera from "../components/FullScreenCamera";
 
 const QrScanner = () => {
   const qrRef = useRef(null);
@@ -7,6 +8,7 @@ const QrScanner = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [busNumber, setBusNumber] = useState(null);
   const [scanSuccess, setScanSuccess] = useState(false);
   const hasScannedRef = useRef(false);
@@ -50,8 +52,10 @@ const QrScanner = () => {
                 audio.play().catch((e) => console.log("Audio play error:", e));
               }
 
-              // Stop scanner after successful scan
-              stopScanner();
+              // Stop scanner and open camera
+              stopScanner().then(() => {
+                setShowCamera(true);
+              });
             }
           },
           (errorMessage) => {}
@@ -80,6 +84,11 @@ const QrScanner = () => {
     }
   };
 
+  const handleCloseCamera = () => {
+    setShowCamera(false);
+    startScanner();
+  };
+
   useEffect(() => {
     startScanner();
 
@@ -88,9 +97,16 @@ const QrScanner = () => {
     };
   }, []);
 
+  if (showCamera) {
+    return (
+      <FullScreenCamera onClose={handleCloseCamera} busNumber={busNumber} />
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-gray-900 flex flex-col">
       <div className="relative flex-1">
+        {/* Scanner View */}
         <div
           ref={qrRef}
           id="qr-reader"
@@ -180,6 +196,12 @@ const QrScanner = () => {
                 Camera Error
               </h3>
               <p className="text-gray-300 mb-6">{cameraError}</p>
+              <button
+                onClick={startScanner}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-white"
+              >
+                Retry
+              </button>
             </div>
           </div>
         )}
@@ -187,7 +209,7 @@ const QrScanner = () => {
         {/* Success State */}
         {scanSuccess && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6">
-            <div className="max-w-md text-center">
+            <div className="max-w-md text-center animate-fade-in">
               <div className="text-green-400 mb-4">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -208,7 +230,7 @@ const QrScanner = () => {
                 Scan Successful
               </h3>
               <p className="text-2xl font-bold text-white mb-2">{busNumber}</p>
-              <p className="text-blue-300">QR code successfully scanned</p>
+              <p className="text-blue-300 animate-pulse">Opening camera...</p>
             </div>
           </div>
         )}
@@ -230,6 +252,19 @@ const QrScanner = () => {
             transform: translateY(100%);
             opacity: 0;
           }
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out forwards;
         }
         body {
           overflow: hidden;
